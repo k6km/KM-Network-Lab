@@ -78,6 +78,79 @@ The capture showed:
 The screenshot below shows the saved scan report identifying OpenSSH on TCP port 22.
 
 ![Nmap SSH baseline scan](nmap-ssh-baseline.png)
+
+## Exercise 2: HTTP Service Lifecycle and Traffic Analysis
+
+### Objective
+
+Observe how starting and stopping a service changes a TCP port's state, then inspect an HTTP request and response in Wireshark.
+
+### Procedure
+
+1. Scanned TCP port `8000` on Ubuntu from Kali; it was **closed**.
+2. Created a dedicated directory on Ubuntu and started a temporary HTTP server:
+
+```bash
+mkdir -p ~/km-web-lab
+cd ~/km-web-lab
+python3 -m http.server 8000 --bind 192.168.77.10
+```
+
+3. Repeated the scan from Kali; port `8000` was now **open**:
+
+```bash
+nmap -n -p 8000 192.168.77.10
+```
+
+4. Captured traffic on Kali's `eth0` interface and visited:
+
+```text
+http://192.168.77.10:8000
+```
+
+5. Applied the Wireshark display filter `http` and inspected the HTTP stream.
+6. Saved the capture locally as `km-http-lab.pcapng`.
+7. Stopped the server with `Ctrl+C` and repeated the scan; port `8000` returned to **closed**.
+
+### Findings
+
+- Starting the HTTP server changed port `8000` from closed to open.
+- The browser completed a TCP handshake before sending its HTTP request.
+- `GET /` received a `200 OK` response containing an empty directory listing.
+- The browser also requested `/favicon.ico`, which received `404 File not found` because no icon file existed.
+- The HTTP stream exposed readable request headers, response headers, and HTML content.
+- The server header reported `SimpleHTTP/0.6 Python/3.14.4`.
+- Ubuntu's server log recorded the client's lab IP address, requests, and response codes.
+- Stopping the server closed the port again.
+
+### Evidence
+
+#### Port State Before and After Starting the Server
+
+![Nmap port 8000 before and after](nmap-port-8000-before-after.png)
+
+#### HTTP Directory Listing
+
+![HTTP directory listing in the browser](http-directory-listing.png)
+
+#### HTTP Requests and Responses
+
+![HTTP traffic filtered in Wireshark](wireshark-http-traffic.png)
+
+#### HTTP Stream and Server Log
+
+![HTTP stream alongside the Ubuntu server log](http-stream-and-server-log.png)
+
+### Lessons Learned
+
+- A listening service makes a port available; a port number alone does not.
+- TCP establishes the connection, while HTTP carries the web request and response.
+- An HTTP `404` response can indicate a missing resource rather than a failed connection.
+- Plain HTTP does not encrypt application content.
+- Packet captures and server logs provide complementary evidence.
+- Identifying a server version does not by itself establish a vulnerability.
+
+The packet capture is stored locally and has not been uploaded to this repository.
 ## Scope
 
 This repository documents beginner lab exercises. It does not claim a complete vulnerability assessment.
