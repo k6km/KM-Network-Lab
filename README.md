@@ -73,8 +73,11 @@ The capture showed:
 
 ## Evidence
 
-The scan report and screenshots will be added under `reports/` and `screenshots/`.
+### Nmap SSH Baseline
 
+The screenshot below shows the saved scan report identifying OpenSSH on TCP port 22.
+
+![Nmap SSH baseline scan](nmap-ssh-baseline.png)
 ## Scope
 
 This repository documents beginner lab exercises. It does not claim a complete vulnerability assessment.
