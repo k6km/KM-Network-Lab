@@ -223,6 +223,71 @@ The source port `34026` was a temporary client port; the SSH server listened on 
 - Missing results from one log filter do not prove that an event was not recorded.
 
 The exported text log remains stored locally on Ubuntu.
+
+## Exercise 4: Using Wireshark to Analyze UDP Scans and ICMP Responses
+
+### Objective
+
+Understand how Nmap identifies closed UDP ports and verify its findings using packet-level evidence in Wireshark.
+
+### Procedure
+
+From Kali, scanned three UDP ports on the Ubuntu lab target:
+
+```bash
+sudo nmap -n -sU -p 53,123,161 --reason 192.168.77.10
+```
+
+Captured the scan on `eth0` and applied this Wireshark display filter:
+
+```text
+ip.addr == 192.168.77.10 && (udp || icmp)
+```
+
+Inspected an ICMP response and the original UDP packet quoted inside it.
+
+### Findings
+
+| UDP Port | Common Service | Nmap State | Reason |
+|---|---|---|---|
+| 53 | DNS | closed | port-unreach |
+| 123 | NTP | closed | port-unreach |
+| 161 | SNMP | closed | port-unreach |
+
+Wireshark showed UDP probes from Kali (`192.168.77.20`) followed by ICMP responses from Ubuntu (`192.168.77.10`).
+
+The inspected response contained:
+
+- **ICMP Type 3:** Destination Unreachable.
+- **ICMP Code 3:** Port Unreachable.
+- An embedded original UDP packet with destination port `53`, identifying the probe that triggered the response.
+
+### Interpretation
+
+The ICMP Port Unreachable responses explain why Nmap classified these UDP ports as closed.
+
+Wireshark displayed some outgoing probes as DNS, NTP, or SNMP because of their contents. These labels did not prove that those services were running on Ubuntu.
+
+Unlike the TCP closed-port responses observed earlier, which used TCP RST packets, these closed UDP ports produced ICMP error messages.
+
+### Evidence
+
+#### Nmap UDP Scan Results
+
+![Nmap UDP scan results](udp-icmp-port-unreachable%20nmap.png)
+
+#### Wireshark ICMP Analysis
+
+![Wireshark ICMP Port Unreachable analysis](udp-icmp-port-unreachable%20wireshark.png)
+
+### Lessons Learned
+
+- Nmap's `--reason` option exposes the evidence behind a port-state classification.
+- ICMP errors can include the original packet headers, allowing an analyst to identify the affected protocol and port.
+- A UDP port that does not respond may be classified as `open|filtered`; silence alone does not prove that it is open.
+- This exercise demonstrated closed UDP ports only, not an open UDP service.
+
+The capture was saved locally as `udp-icmp-port-unreachable.pcapng` and has not been uploaded to this repository.
   
 ## Scope
 
