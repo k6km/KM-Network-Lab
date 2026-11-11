@@ -151,6 +151,79 @@ http://192.168.77.10:8000
 - Identifying a server version does not by itself establish a vulnerability.
 
 The packet capture is stored locally and has not been uploaded to this repository.
+
+## Exercise 3: SSH Authentication Log Analysis
+
+### Objective
+
+Generate controlled SSH authentication events and correlate client-side results with Ubuntu server logs.
+
+### Procedure
+
+1. Verified that `ssh.socket` was enabled.
+2. Established a successful SSH connection from Kali to Ubuntu, then ended it with `exit`.
+3. Reviewed the server logs for successful authentication and session closure.
+4. Monitored new SSH messages:
+
+```bash
+sudo journalctl -f -n 0 -t sshd -t sshd-session
+```
+
+5. From Kali, attempted one password-based login using an intentionally incorrect password:
+
+```bash
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 km@192.168.77.10
+```
+
+6. Stopped log monitoring with `Ctrl+C` and exported the failed attempt's process logs:
+
+```bash
+sudo journalctl -b _PID=1988 --no-pager > ~/ssh-failed-login.txt
+cat ~/ssh-failed-login.txt
+```
+
+The PID `1988` belongs to this specific lab attempt. Process IDs change and must be identified again when repeating the exercise.
+
+### Findings
+
+The successful login produced `Accepted password` and `session opened` messages. A later process-based query also revealed `session closed for user km`.
+
+The controlled failed attempt produced:
+
+- `authentication failure`
+- `Failed password for km from 192.168.77.20 port 34026 ssh2`
+- `Connection closed by authenticating user km ... [preauth]`
+
+Kali displayed `Permission denied`, matching the authentication failure recorded on Ubuntu.
+
+The source port `34026` was a temporary client port; the SSH server listened on TCP port `22`.
+
+### Investigation Notes
+
+- The live query filtered by `ssh.service` did not display the successful session's closure message.
+- Querying the session process's PID revealed the closure event.
+- A PID-only search can include unrelated events because process IDs are reused. Filtering by the current boot reduces this ambiguity.
+- One login attempt can produce multiple log messages.
+- This was one intentional failed login in an isolated lab, not evidence of a brute-force attack.
+
+### Evidence
+
+#### Ubuntu Authentication Logs
+
+![Ubuntu SSH authentication logs](ssh%20failed%20login%20analysis%20Ubuntu.png)
+
+#### Kali Client Result
+
+![Kali SSH authentication failure](ssh%20failed%20login%20analysis%20kali.png)
+
+### Lessons Learned
+
+- Correlate client output with server logs.
+- Check the account, source address, timestamp, and authentication outcome.
+- Missing results from one log filter do not prove that an event was not recorded.
+
+The exported text log remains stored locally on Ubuntu.
+  
 ## Scope
 
 This repository documents beginner lab exercises. It does not claim a complete vulnerability assessment.
